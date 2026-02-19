@@ -2,6 +2,9 @@ import { assertRepoExists, findWorkspacePath } from "../lib/git.js";
 import { runProcess } from "../lib/process.js";
 import { FlockError, type SendResult } from "../lib/types.js";
 
+export const SEND_MODELS = ["claude", "codex"] as const;
+export type SendModel = (typeof SEND_MODELS)[number];
+
 type SendTarget =
   | {
       type: "repo";
@@ -21,22 +24,46 @@ const resolveTargetPath = async (target: SendTarget): Promise<string> => {
   return workspace.path;
 };
 
+type SendInvocation = {
+  command: string;
+  args: string[];
+};
+
+export const buildSendInvocation = (
+  message: string,
+  model: SendModel = "claude",
+): SendInvocation => {
+  if (model === "codex") {
+    return {
+      command: "codex",
+      args: ["exec", message],
+    };
+  }
+
+  return {
+    command: "claude",
+    args: ["-p", message],
+  };
+};
+
 export const sendMessage = async (
   target: SendTarget,
   message: string,
+  model: SendModel = "claude",
 ): Promise<SendResult> => {
   const cwd = await resolveTargetPath(target);
+  const invocation = buildSendInvocation(message, model);
 
   const result = await runProcess({
-    command: "claude",
-    args: ["-p", message],
+    command: invocation.command,
+    args: invocation.args,
     cwd,
   });
 
   if (result.exitCode !== 0) {
     throw new FlockError({
       code: "CLAUDE_COMMAND_FAILED",
-      message: result.stderr || "claude command failed",
+      message: result.stderr || `${invocation.command} command failed`,
       cause: result,
     });
   }
