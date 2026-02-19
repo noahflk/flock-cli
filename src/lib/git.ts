@@ -16,6 +16,11 @@ type ParsedRepoInput = {
   name: string;
 };
 
+type ParsedGitHubSlug = {
+  slug: string;
+  name: string;
+};
+
 const stripGitSuffix = (value: string): string => value.replace(/\.git$/i, "");
 
 const parseRepoNameFromUrl = (url: string): string | null => {
@@ -71,6 +76,38 @@ export const parseRepoInput = (input: string): ParsedRepoInput => {
   };
 };
 
+export const parseGitHubSlug = (input: string): ParsedGitHubSlug => {
+  const normalized = input.trim();
+
+  if (!normalized) {
+    throw new FlockError({
+      code: "INVALID_REPO_INPUT",
+      message: "GitHub slug cannot be empty.",
+    });
+  }
+
+  if (!/^[\w.-]+\/[\w.-]+(?:\.git)?$/.test(normalized)) {
+    throw new FlockError({
+      code: "INVALID_REPO_INPUT",
+      message: `Expected GitHub slug in owner/repo format: ${input}`,
+    });
+  }
+
+  const [owner, repo] = normalized.split("/");
+  const cleanedRepo = stripGitSuffix(repo ?? "");
+  if (!owner || !cleanedRepo) {
+    throw new FlockError({
+      code: "INVALID_REPO_INPUT",
+      message: `Expected GitHub slug in owner/repo format: ${input}`,
+    });
+  }
+
+  return {
+    slug: `${owner}/${cleanedRepo}`,
+    name: cleanedRepo,
+  };
+};
+
 const ensureRepoDir = async (): Promise<void> => {
   await ensureDir(REPOS_DIR);
 };
@@ -121,6 +158,40 @@ export const cloneRepoAtInput = async (
     throw new FlockError({
       code: "GIT_COMMAND_FAILED",
       message: result.stderr || "git clone failed",
+      cause: result,
+    });
+  }
+
+  return {
+    name: parsed.name,
+    path: destination,
+  };
+};
+
+export const cloneGitHubRepoAtSlug = async (
+  slugInput: string,
+): Promise<{ name: string; path: string }> => {
+  await ensureRepoDir();
+
+  const parsed = parseGitHubSlug(slugInput);
+  const destination = repoPath(parsed.name);
+
+  if (await pathExists(destination)) {
+    throw new FlockError({
+      code: "REPO_ALREADY_EXISTS",
+      message: `Repository already exists at ${destination}`,
+    });
+  }
+
+  const result = await runProcess({
+    command: "gh",
+    args: ["repo", "clone", parsed.slug, destination],
+  });
+
+  if (result.exitCode !== 0) {
+    throw new FlockError({
+      code: "GIT_COMMAND_FAILED",
+      message: result.stderr || "gh repo clone failed",
       cause: result,
     });
   }

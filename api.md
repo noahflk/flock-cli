@@ -36,6 +36,27 @@ No auth required.
 }
 ```
 
+### `POST /repos`
+
+Clone a repository using a GitHub slug (`owner/repo`).
+
+**Request**
+
+```json
+{
+  "slug": "acme/widget"
+}
+```
+
+**Response** `201`
+
+```json
+{
+  "name": "widget",
+  "path": "/home/you/repos/widget"
+}
+```
+
 ---
 
 ## Sessions
