@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "bun:test";
-import { listRepos, listWorkspaces } from "../../src/core/list.ts";
+import { listRepos, listReposWithOrigin, listWorkspaces } from "../../src/core/list.ts";
 import { REPOS_DIR, WORKSPACES_DIR } from "../../src/lib/config.ts";
 
 const cleanupTargets: string[] = [];
@@ -43,6 +43,14 @@ const initGitRepoWithBranch = async (dir: string, branch: string): Promise<void>
   runGit(dir, ["commit", "-m", "init"]);
 };
 
+const initGitRepoWithOrigin = async (
+  dir: string,
+  origin: string,
+): Promise<void> => {
+  await initGitRepoWithBranch(dir, "main");
+  runGit(dir, ["remote", "add", "origin", origin]);
+};
+
 afterEach(async () => {
   while (cleanupTargets.length > 0) {
     const target = cleanupTargets.pop();
@@ -78,6 +86,75 @@ describe("listRepos", () => {
 
     expect(repoAResult?.path).toBe(repoAPath);
     expect(repoBResult?.path).toBe(repoBPath);
+  });
+});
+
+describe("listReposWithOrigin", () => {
+  it("returns only GitHub repos by default with origin values", async () => {
+    const githubRepo = unique("repo-github");
+    const gitlabRepo = unique("repo-gitlab");
+    const plainRepo = unique("repo-plain");
+    const githubRepoPath = path.join(REPOS_DIR, githubRepo);
+    const gitlabRepoPath = path.join(REPOS_DIR, gitlabRepo);
+    const plainRepoPath = path.join(REPOS_DIR, plainRepo);
+
+    trackCleanup(githubRepoPath);
+    trackCleanup(gitlabRepoPath);
+    trackCleanup(plainRepoPath);
+
+    await initGitRepoWithOrigin(githubRepoPath, "git@github.com:acme/widget.git");
+    await initGitRepoWithOrigin(gitlabRepoPath, "git@gitlab.com:acme/widget.git");
+    await mkdir(plainRepoPath, { recursive: true });
+
+    const repos = await listReposWithOrigin();
+    const ours = repos.filter((repo) => repo.name.startsWith("flock-test-repo-"));
+
+    expect(ours).toEqual([
+      {
+        name: githubRepo,
+        path: githubRepoPath,
+        origin: "git@github.com:acme/widget.git",
+      },
+    ]);
+  });
+
+  it("includes non-GitHub and no-origin repos when includeNonGitHub is enabled", async () => {
+    const githubRepo = unique("repo-github-all");
+    const gitlabRepo = unique("repo-gitlab-all");
+    const plainRepo = unique("repo-plain-all");
+    const githubRepoPath = path.join(REPOS_DIR, githubRepo);
+    const gitlabRepoPath = path.join(REPOS_DIR, gitlabRepo);
+    const plainRepoPath = path.join(REPOS_DIR, plainRepo);
+
+    trackCleanup(githubRepoPath);
+    trackCleanup(gitlabRepoPath);
+    trackCleanup(plainRepoPath);
+
+    await initGitRepoWithOrigin(githubRepoPath, "https://github.com/acme/widget.git");
+    await initGitRepoWithOrigin(gitlabRepoPath, "https://gitlab.com/acme/widget.git");
+    await mkdir(plainRepoPath, { recursive: true });
+
+    const repos = await listReposWithOrigin({ includeNonGitHub: true });
+    const ours = repos
+      .filter((repo) => repo.name.startsWith("flock-test-repo-"))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    expect(ours).toEqual([
+      {
+        name: githubRepo,
+        path: githubRepoPath,
+        origin: "https://github.com/acme/widget.git",
+      },
+      {
+        name: gitlabRepo,
+        path: gitlabRepoPath,
+        origin: "https://gitlab.com/acme/widget.git",
+      },
+      {
+        name: plainRepo,
+        path: plainRepoPath,
+      },
+    ]);
   });
 });
 

@@ -29,14 +29,41 @@ type SendInvocation = {
   args: string[];
 };
 
+type SendInvocationOptions = {
+  sessionId?: string;
+  resume?: boolean;
+};
+
 export const buildSendInvocation = (
   message: string,
   model: SendModel = "claude",
+  options: SendInvocationOptions = {},
 ): SendInvocation => {
   if (model === "codex") {
+    if (options.resume && options.sessionId) {
+      return {
+        command: "codex",
+        args: ["exec", "resume", options.sessionId, message],
+      };
+    }
+
     return {
       command: "codex",
       args: ["exec", message],
+    };
+  }
+
+  if (options.resume && options.sessionId) {
+    return {
+      command: "claude",
+      args: ["-p", "--resume", options.sessionId, message],
+    };
+  }
+
+  if (options.sessionId) {
+    return {
+      command: "claude",
+      args: ["-p", "--session-id", options.sessionId, message],
     };
   }
 

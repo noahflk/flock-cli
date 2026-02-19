@@ -11,7 +11,13 @@ export type ErrorCode =
   | "PR_COMMAND_FAILED"
   | "GIT_COMMAND_FAILED"
   | "COMMAND_NOT_FOUND"
-  | "IO_ERROR";
+  | "IO_ERROR"
+  | "SESSION_NOT_FOUND"
+  | "SESSION_BUSY"
+  | "ARCHIVE_REFUSED"
+  | "UNAUTHORIZED"
+  | "RATE_LIMITED"
+  | "INVALID_REQUEST";
 
 export type FlockErrorShape = {
   code: ErrorCode;
@@ -48,6 +54,7 @@ export type ProcessResult = {
 export type Repo = {
   name: string;
   path: string;
+  origin?: string;
 };
 
 export type Workspace = {
@@ -83,3 +90,9 @@ export type ArchiveResult = {
   path: string;
   warnings: string[];
 };
+
+export type SessionType = "local" | "worktree";
+export type SessionStatus = "idle" | "running" | "archived";
+export type MessageRole = "user" | "assistant";
+
+export type SessionModel = "claude" | "codex";
