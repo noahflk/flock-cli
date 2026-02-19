@@ -6,6 +6,9 @@ FLOCK_DIR="$HOME/flock-cli"
 FLOCK_CONFIG_DIR="$HOME/.flock"
 FLOCK_PORT=3000
 
+echo "=== Installing system dependencies ==="
+sudo apt-get update -y && sudo apt-get install -y unzip
+
 echo "=== Installing nvm + Node.js 24 ==="
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 \. "$HOME/.nvm/nvm.sh"
