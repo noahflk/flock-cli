@@ -1,7 +1,7 @@
 import { initializeDatabase } from "./db/client.js";
 import { RateLimiter, runMiddleware } from "./middleware.js";
 import { handleHealthRoute } from "./routes/health.js";
-import { handleReposRoute } from "./routes/repos.js";
+import { handleCreateRepoRoute, handleListReposRoute } from "./routes/repos.js";
 import {
   handleArchiveSessionRoute,
   handleCreateSessionRoute,
@@ -75,8 +75,14 @@ const handleApiRoute = async (request: Request): Promise<Response> => {
     return handleHealthRoute();
   }
 
-  if (request.method === "GET" && url.pathname === "/repos") {
-    return await handleReposRoute();
+  if (url.pathname === "/repos") {
+    if (request.method === "GET") {
+      return await handleListReposRoute();
+    }
+
+    if (request.method === "POST") {
+      return await handleCreateRepoRoute(request);
+    }
   }
 
   if (path.length === 1 && path[0] === "sessions") {
