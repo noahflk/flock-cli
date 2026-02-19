@@ -8,16 +8,20 @@
   },
   "scripts": {
     "start": "bun run src/index.ts",
+    "serve": "bun run src/api/server.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "check": "bun run typecheck && bun run lint && bun run test"
   },
   "dependencies": {
-    "commander": "^14.0.3"
+    "commander": "^14.0.3",
+    "drizzle-kit": "^0.31.6",
+    "drizzle-orm": "^0.44.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/bun": "^1.2.22",
     "@types/node": "^25.2.3",
     "eslint": "^10.0.0",
     "typescript": "^5.9.3",

@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { listRepos, listWorkspaces } from "../core/list.js";
+import { listReposWithOrigin, listWorkspaces } from "../core/list.js";
 import { printResult } from "./_shared.js";
 
 export const registerListCommand = (program: Command): void => {
@@ -8,8 +8,11 @@ export const registerListCommand = (program: Command): void => {
   list
     .command("repos")
     .description("List cloned repos")
-    .action(async () => {
-      const repos = await listRepos();
+    .option("--all", "Include repos without a GitHub origin")
+    .action(async (options: { all?: boolean }) => {
+      const repos = await listReposWithOrigin({
+        includeNonGitHub: options.all === true,
+      });
       printResult(repos);
     });
 
