@@ -14,21 +14,25 @@ else
   echo "=== System dependencies already installed, skipping ==="
 fi
 
-# --- nvm + Node.js ---
-export NVM_DIR="$HOME/.nvm"
-if [ ! -d "$NVM_DIR" ]; then
-  echo "=== Installing nvm ==="
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+# --- Node.js (skip nvm if node >= 20 already available) ---
+if command -v node &>/dev/null && [ "$(node -v | sed 's/v//' | cut -d. -f1)" -ge 20 ]; then
+  echo "=== Node.js $(node -v) already installed, skipping nvm ==="
 else
-  echo "=== nvm already installed, skipping ==="
-fi
-\. "$NVM_DIR/nvm.sh"
-if ! nvm ls 24 &>/dev/null; then
-  echo "=== Installing Node.js 24 ==="
-  nvm install 24
-else
-  echo "=== Node.js 24 already installed, skipping ==="
-  nvm use 24
+  export NVM_DIR="$HOME/.nvm"
+  if [ ! -d "$NVM_DIR" ]; then
+    echo "=== Installing nvm ==="
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+  else
+    echo "=== nvm already installed, skipping ==="
+  fi
+  \. "$NVM_DIR/nvm.sh"
+  if ! nvm ls 24 &>/dev/null; then
+    echo "=== Installing Node.js 24 ==="
+    nvm install 24
+  else
+    echo "=== Node.js 24 already installed, skipping ==="
+    nvm use 24
+  fi
 fi
 
 # --- Bun ---
