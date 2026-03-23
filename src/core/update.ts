@@ -5,16 +5,40 @@ import { FlockError } from "../lib/types.js";
 
 export type UpdateResult = {
   updated: boolean;
-  output: string;
+  summary: string;
 };
 
 const FLOCK_DIR = path.join(os.homedir(), "flock-cli");
+const ALREADY_UP_TO_DATE_PATTERN = /already up[- ]to[- ]date\.?/i;
 
-export const updateFlock = async (): Promise<UpdateResult> => {
-  const pull = await runProcess({
+type RunProcessFn = typeof runProcess;
+
+type UpdateDependencies = {
+  flockDir?: string;
+  run?: RunProcessFn;
+};
+
+const summarizeProcessOutput = (output: string): string => {
+  return (
+    output
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.length > 0) ?? "Update completed."
+  );
+};
+
+export const isAlreadyUpToDate = (output: string): boolean => {
+  return ALREADY_UP_TO_DATE_PATTERN.test(output);
+};
+
+export const updateFlock = async ({
+  flockDir = FLOCK_DIR,
+  run = runProcess,
+}: UpdateDependencies = {}): Promise<UpdateResult> => {
+  const pull = await run({
     command: "git",
     args: ["pull"],
-    cwd: FLOCK_DIR,
+    cwd: flockDir,
   });
 
   if (pull.exitCode !== 0) {
@@ -25,10 +49,10 @@ export const updateFlock = async (): Promise<UpdateResult> => {
     });
   }
 
-  const install = await runProcess({
+  const install = await run({
     command: "bun",
     args: ["install"],
-    cwd: FLOCK_DIR,
+    cwd: flockDir,
   });
 
   if (install.exitCode !== 0) {
@@ -39,10 +63,10 @@ export const updateFlock = async (): Promise<UpdateResult> => {
     });
   }
 
-  const alreadyUpToDate = pull.stdout.includes("Already up to date");
+  const alreadyUpToDate = isAlreadyUpToDate(pull.stdout);
 
   return {
     updated: !alreadyUpToDate,
-    output: pull.stdout.trim(),
+    summary: summarizeProcessOutput(pull.stdout),
   };
 };
