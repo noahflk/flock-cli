@@ -32,6 +32,7 @@ type SendInvocation = {
 type SendInvocationOptions = {
   sessionId?: string;
   resume?: boolean;
+  appendSystemPrompt?: string;
 };
 
 export const buildSendInvocation = (
@@ -53,23 +54,29 @@ export const buildSendInvocation = (
     };
   }
 
+  const args = ["-p"];
+
+  if (options.appendSystemPrompt) {
+    args.push("--append-system-prompt", options.appendSystemPrompt);
+  }
+
   if (options.resume && options.sessionId) {
     return {
       command: "claude",
-      args: ["-p", "--resume", options.sessionId, message],
+      args: [...args, "--resume", options.sessionId, message],
     };
   }
 
   if (options.sessionId) {
     return {
       command: "claude",
-      args: ["-p", "--session-id", options.sessionId, message],
+      args: [...args, "--session-id", options.sessionId, message],
     };
   }
 
   return {
     command: "claude",
-    args: ["-p", message],
+    args: [...args, message],
   };
 };
 

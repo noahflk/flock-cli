@@ -23,6 +23,22 @@ describe("buildSendInvocation", () => {
     });
   });
 
+  it("uses claude --append-system-prompt when provided", () => {
+    expect(
+      buildSendInvocation("review this patch", "claude", {
+        appendSystemPrompt: "Rename the branch first.",
+      }),
+    ).toEqual({
+      command: "claude",
+      args: [
+        "-p",
+        "--append-system-prompt",
+        "Rename the branch first.",
+        "review this patch",
+      ],
+    });
+  });
+
   it("uses claude --resume when resume is enabled", () => {
     expect(
       buildSendInvocation("review this patch", "claude", {
@@ -32,6 +48,26 @@ describe("buildSendInvocation", () => {
     ).toEqual({
       command: "claude",
       args: ["-p", "--resume", "abc-123", "review this patch"],
+    });
+  });
+
+  it("uses claude --append-system-prompt together with --resume", () => {
+    expect(
+      buildSendInvocation("review this patch", "claude", {
+        sessionId: "abc-123",
+        resume: true,
+        appendSystemPrompt: "Rename the branch first.",
+      }),
+    ).toEqual({
+      command: "claude",
+      args: [
+        "-p",
+        "--append-system-prompt",
+        "Rename the branch first.",
+        "--resume",
+        "abc-123",
+        "review this patch",
+      ],
     });
   });
 
