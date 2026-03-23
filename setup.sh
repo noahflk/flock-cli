@@ -4,6 +4,7 @@ set -euo pipefail
 FLOCK_REPO="https://github.com/noahflk/flock-cli.git"
 FLOCK_DIR="$HOME/flock-cli"
 FLOCK_CONFIG_DIR="$HOME/.flock"
+CLAUDE_CONFIG_DIR="$HOME/.claude"
 FLOCK_PORT=3000
 
 # --- Check prerequisites ---
@@ -138,6 +139,11 @@ if [ "$CONFIG_ALREADY_EXISTS" -eq 0 ]; then
 else
   echo "Config updated at $CONFIG_PATH"
 fi
+
+# --- Claude Code settings ---
+CLAUDE_SETTINGS_PATH="$CLAUDE_CONFIG_DIR/settings.json"
+echo "=== Syncing Claude Code settings ==="
+CLAUDE_SETTINGS_TARGET="$CLAUDE_SETTINGS_PATH" bun run ./src/lib/claude-settings.ts
 
 # --- Systemd service (Debian/Ubuntu only) ---
 if [ -d /run/systemd/system ] && command -v systemctl &>/dev/null; then
