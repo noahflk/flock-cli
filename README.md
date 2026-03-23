@@ -77,7 +77,7 @@ flock send workspace my-app/fix-bug "add error handling to the parser"
 
 ### `flock pr <repo> <workspace>`
 
-Push the workspace branch and create a GitHub pull request.
+Send a PR request prompt to the workspace session's AI, including the current branch and uncommitted change count.
 
 ```bash
 flock pr my-app fix-bug
@@ -118,6 +118,7 @@ All routes except `/health` require the `x-flock-secret` header. See [api.md](ap
 | `GET` | `/sessions/:id/messages` | Get messages |
 | `POST` | `/sessions/:id/messages` | Send a message |
 | `POST` | `/sessions/:id/cancel` | Cancel a running message |
+| `POST` | `/workspaces/:repo/:workspace/pr` | Ask a workspace session to create a PR |
 
 ## Development
 

@@ -1,52 +1,107 @@
-import { access } from "node:fs/promises";
-import { workspacePath } from "../lib/config.js";
-import { getBranchAtPath, pushBranch } from "../lib/git.js";
-import { runProcess } from "../lib/process.js";
-import { FlockError, type PRResult } from "../lib/types.js";
+import { dispatchSessionMessage, type SessionMessage } from "./message.js";
+import { getRequiredWorktreeSession } from "./session.js";
+import { countUncommittedChangesAtPath, getBranchAtPath } from "../lib/git.js";
+import { FlockError } from "../lib/types.js";
 
-const pathExists = async (targetPath: string): Promise<boolean> => {
-  try {
-    await access(targetPath);
-    return true;
-  } catch {
-    return false;
-  }
+const DEFAULT_TARGET_BRANCH = "origin/main";
+
+type WorktreeSession = {
+  id: string;
+  repo: string;
+  workspaceName: string | null;
+  workspacePath: string | null;
 };
 
-export const createPR = async (
-  repoName: string,
+type DispatchResult = {
+  userMessage: SessionMessage;
+  status: "running";
+};
+
+type PRRequestDependencies = {
+  getSession?: (repo: string, workspaceName: string) => Promise<WorktreeSession>;
+  getBranch?: (cwd: string) => Promise<string>;
+  countUncommittedChanges?: (cwd: string) => Promise<number>;
+  dispatch?: (sessionId: string, content: string) => Promise<DispatchResult>;
+};
+
+export type PRRequestResult = {
+  sessionId: string;
+  repo: string;
+  workspace: string;
+  branch: string;
+  targetBranch: string;
+  uncommittedChanges: number;
+  userMessage: SessionMessage;
+  status: "running";
+};
+
+export const buildPRRequestPrompt = (
+  branch: string,
+  uncommittedChanges: number,
+): string => {
+  const sections = [
+    "The user likes the current state of the code.",
+    "",
+    `There are ${uncommittedChanges} uncommitted changes.`,
+    `The current branch is ${branch}`,
+    `The target branch is ${DEFAULT_TARGET_BRANCH}.`,
+    "",
+    "The user requested a PR.",
+    "",
+  ];
+
+  sections.push(
+    "Follow these steps to create a PR:",
+    "",
+    "- If you have any skills related to creating PRs, invoke them now. Instructions there should take precedence over these instructions.",
+    "- Run `git diff` to review uncommitted changes",
+    "- Commit them. Follow any instructions the user gave you about writing commit messages.",
+    "- Push to origin.",
+    `- Use \`git diff ${DEFAULT_TARGET_BRANCH}...\` to review the PR diff`,
+    "- Use `gh pr create --base main` to create a PR onto the target branch. Keep the title under 80 characters. Keep the description under five sentences, unless the user instructed you otherwise. Describe not just changes made in this session but ALL changes in the workspace diff.",
+    "",
+    "If any of these steps fail, ask the user for help.",
+  );
+
+  return sections.join("\n");
+};
+
+export const requestWorkspacePR = async (
+  repo: string,
   workspaceName: string,
-): Promise<PRResult> => {
-  const cwd = workspacePath(repoName, workspaceName);
+  dependencies: PRRequestDependencies = {},
+): Promise<PRRequestResult> => {
+  const getSession = dependencies.getSession ?? getRequiredWorktreeSession;
+  const getBranch = dependencies.getBranch ?? getBranchAtPath;
+  const countUncommittedChanges =
+    dependencies.countUncommittedChanges ?? countUncommittedChangesAtPath;
+  const dispatch = dependencies.dispatch ?? dispatchSessionMessage;
 
-  if (!(await pathExists(cwd))) {
+  const session = await getSession(repo, workspaceName);
+  const workspacePath = session.workspacePath;
+
+  if (!workspacePath) {
     throw new FlockError({
-      code: "WORKSPACE_NOT_FOUND",
-      message: `Workspace not found for repo ${repoName}: ${workspaceName}`,
+      code: "IO_ERROR",
+      message: `Session ${session.id} is missing a workspace path`,
     });
   }
 
-  const branch = await getBranchAtPath(cwd);
-  await pushBranch(cwd, branch);
-
-  const result = await runProcess({
-    command: "gh",
-    args: ["pr", "create", "--fill", "--base", "main"],
-    cwd,
-  });
-
-  if (result.exitCode !== 0) {
-    throw new FlockError({
-      code: "PR_COMMAND_FAILED",
-      message: result.stderr || "gh pr create failed",
-      cause: result,
-    });
-  }
-
-  const urlMatch = result.stdout.match(/https:\/\/\S+/);
+  const [branch, uncommittedChanges] = await Promise.all([
+    getBranch(workspacePath),
+    countUncommittedChanges(workspacePath),
+  ]);
+  const prompt = buildPRRequestPrompt(branch, uncommittedChanges);
+  const result = await dispatch(session.id, prompt);
 
   return {
-    url: urlMatch?.[0] ?? result.stdout.trim(),
+    sessionId: session.id,
+    repo: session.repo,
+    workspace: workspaceName,
     branch,
+    targetBranch: DEFAULT_TARGET_BRANCH,
+    uncommittedChanges,
+    userMessage: result.userMessage,
+    status: result.status,
   };
 };
