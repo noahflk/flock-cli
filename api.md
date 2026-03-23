@@ -190,3 +190,33 @@ Cancels a running message.
 ```
 
 Returns `404` if no running process for the session.
+
+---
+
+## Workspaces
+
+### `POST /workspaces/{repo}/{workspace}/pr`
+
+Dispatches a standard PR-request prompt to a worktree session for the specified repo/workspace pair.
+
+**Response** `202`
+
+```json
+{
+  "sessionId": "uuid",
+  "repo": "my-repo",
+  "workspace": "fix-bug",
+  "branch": "fix-bug",
+  "targetBranch": "origin/main",
+  "uncommittedChanges": 3,
+  "userMessage": {
+    "id": "uuid",
+    "role": "user",
+    "content": "...",
+    "createdAt": 1700000000000
+  },
+  "status": "running"
+}
+```
+
+Returns `404` if there is no active worktree session for that repo/workspace pair, and `409` if that session is already running.

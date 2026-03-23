@@ -5,6 +5,10 @@ import { messages } from "../api/db/schema.js";
 import { assertRepoExists } from "../lib/git.js";
 import { resolveConfiguredCommand } from "../lib/command-paths.js";
 import { FlockError, type MessageStatus } from "../lib/types.js";
+import {
+  buildFirstWorktreeSystemPrompt,
+  wrapMessageWithSystemInstruction,
+} from "./agent-message.js";
 import { buildSendInvocation } from "./send.js";
 import {
   getRequiredSessionById,
@@ -89,6 +93,15 @@ const hasAssistantMessage = async (sessionId: string): Promise<boolean> => {
   return Number(row?.count ?? 0) > 0;
 };
 
+const hasAnyMessage = async (sessionId: string): Promise<boolean> => {
+  const [row] = await db
+    .select({ count: sql<number>`count(${messages.id})` })
+    .from(messages)
+    .where(eq(messages.sessionId, sessionId));
+
+  return Number(row?.count ?? 0) > 0;
+};
+
 const parseCodexSessionId = (output: string): string | null => {
   const patterns = [
     /session[_\s-]?id[:=\s]+([A-Za-z0-9._:-]+)/i,
@@ -148,10 +161,19 @@ const spawnWithCapture = async (
 const runSessionProcess = async (
   sessionId: string,
   content: string,
+  isFirstMessage: boolean,
 ): Promise<void> => {
   const session = await getRequiredSessionById(sessionId);
   const cwd = await resolveSessionCwd(sessionId);
   const resume = await hasAssistantMessage(sessionId);
+  const firstWorktreeSystemPrompt = buildFirstWorktreeSystemPrompt({
+    sessionType: session.type,
+    isFirstMessage,
+  });
+  const outboundContent =
+    session.model === "codex" && firstWorktreeSystemPrompt
+      ? wrapMessageWithSystemInstruction(content, firstWorktreeSystemPrompt)
+      : content;
 
   let modelSessionId = session.modelSessionId;
   if (!modelSessionId && session.model === "claude") {
@@ -159,9 +181,11 @@ const runSessionProcess = async (
     await setSessionModelSessionId(session.id, modelSessionId);
   }
 
-  const invocation = buildSendInvocation(content, session.model, {
+  const invocation = buildSendInvocation(outboundContent, session.model, {
     sessionId: modelSessionId ?? undefined,
     resume,
+    appendSystemPrompt:
+      session.model === "claude" ? firstWorktreeSystemPrompt ?? undefined : undefined,
   });
 
   try {
@@ -256,6 +280,8 @@ export const dispatchSessionMessage = async (
     });
   }
 
+  const isFirstMessage = !(await hasAnyMessage(sessionId));
+
   const row: MessageRow = {
     id: crypto.randomUUID(),
     sessionId,
@@ -266,7 +292,7 @@ export const dispatchSessionMessage = async (
 
   await db.insert(messages).values(row);
   await setSessionStatus(sessionId, "running");
-  void runSessionProcess(sessionId, trimmed);
+  void runSessionProcess(sessionId, trimmed, isFirstMessage);
 
   return {
     userMessage: toSessionMessage(row),
