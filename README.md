@@ -1,8 +1,6 @@
 # Flock CLI
 
-Manage headless Claude and Codex AI sessions across multiple repositories and workspaces.
-
-Flock provides both a CLI and an API server for creating sessions, sending messages, and managing repos — designed to run on a Linux server and orchestrate coding agents at scale.
+Manage headless Claude and Codex AI sessions across multiple repositories and workspaces. Designed to run on a Linux server and orchestrate coding agents at scale.
 
 ## Deploy
 
@@ -28,6 +26,68 @@ sudo systemctl start flock
 ```
 
 The API will be available at `http://<your-ip>:3000`. Your secret is in `~/.flock/server-config.json`.
+
+## CLI Commands
+
+### `flock clone <repo>`
+
+Clone a repository into `~/repos`. Accepts a GitHub slug (`owner/repo`) or a full URL.
+
+```bash
+flock clone acme/my-app
+```
+
+### `flock new <repo>`
+
+Create a new workspace as a git worktree for the given repo.
+
+```bash
+flock new my-app
+```
+
+### `flock send <repo> <message> [--model claude|codex]`
+
+Send a prompt to a repo. Defaults to Claude.
+
+```bash
+flock send my-app "fix the failing tests"
+```
+
+### `flock send workspace <workspace> <message> [--model claude|codex]`
+
+Send a prompt to a specific workspace instead of the main repo.
+
+```bash
+flock send workspace my-app/fix-bug "add error handling to the parser"
+```
+
+### `flock pr <repo> <workspace>`
+
+Push the workspace branch and create a GitHub pull request.
+
+```bash
+flock pr my-app fix-bug
+```
+
+### `flock archive <repo> <workspace>`
+
+Archive a workspace by removing its git worktree.
+
+```bash
+flock archive my-app fix-bug
+```
+
+### `flock list repos [--all]`
+
+List cloned repos. Use `--all` to include repos without a GitHub origin.
+
+### `flock list workspaces [repo]`
+
+List all workspaces, optionally filtered by repo name.
+
+### `flock update`
+
+Pull the latest version and reinstall dependencies.
 
 ## API
 

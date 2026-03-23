@@ -7,6 +7,7 @@ import { registerListCommand } from "./commands/list.js";
 import { registerNewCommand } from "./commands/new.js";
 import { registerPRCommand } from "./commands/pr.js";
 import { registerSendCommand } from "./commands/send.js";
+import { registerUpdateCommand } from "./commands/update.js";
 
 const program = new Command();
 
@@ -21,6 +22,7 @@ registerSendCommand(program);
 registerNewCommand(program);
 registerPRCommand(program);
 registerListCommand(program);
+registerUpdateCommand(program);
 
 program.parseAsync(process.argv).catch((error: unknown) => {
   const normalized = normalizeError(error);
