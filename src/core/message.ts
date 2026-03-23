@@ -4,7 +4,7 @@ import { db } from "../api/db/client.js";
 import { messages } from "../api/db/schema.js";
 import { assertRepoExists } from "../lib/git.js";
 import { resolveConfiguredCommand } from "../lib/command-paths.js";
-import { FlockError } from "../lib/types.js";
+import { FlockError, type MessageStatus } from "../lib/types.js";
 import {
   buildFirstWorktreeSystemPrompt,
   wrapMessageWithSystemInstruction,
@@ -26,15 +26,22 @@ type RunningSession = {
 export type SessionMessage = {
   id: string;
   role: "user" | "assistant";
+  status: MessageStatus;
   content: string;
   createdAt: number;
 };
+
+const ERROR_PREFIX = "[ERROR] ";
+
+const getMessageStatus = (row: MessageRow): MessageStatus =>
+  row.role === "assistant" && row.content.startsWith(ERROR_PREFIX) ? "error" : "ok";
 
 const runningProcesses = new Map<string, RunningSession>();
 
 const toSessionMessage = (row: MessageRow): SessionMessage => ({
   id: row.id,
   role: row.role,
+  status: getMessageStatus(row),
   content: row.content,
   createdAt: row.createdAt,
 });
@@ -204,7 +211,7 @@ const runSessionProcess = async (
     if (result.exitCode !== 0) {
       await insertAssistantMessage(
         sessionId,
-        `[ERROR] ${collectErrorOutput(result.stdout, result.stderr) || `${invocation.command} command failed`}`,
+        `${ERROR_PREFIX}${collectErrorOutput(result.stdout, result.stderr) || `${invocation.command} command failed`}`,
       );
     } else {
       const response = result.stdout.trim() || result.stderr.trim();
@@ -212,7 +219,7 @@ const runSessionProcess = async (
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await insertAssistantMessage(sessionId, `[ERROR] ${message}`);
+    await insertAssistantMessage(sessionId, `${ERROR_PREFIX}${message}`);
   } finally {
     runningProcesses.delete(sessionId);
     await setSessionStatus(sessionId, "idle");
