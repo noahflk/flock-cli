@@ -142,6 +142,8 @@ Returns `409` if running, or if worktree has uncommitted changes and `force` is 
 }
 ```
 
+Assistant failures are returned as ordinary `assistant` messages. There is no separate error field; failed runs use `content` prefixed with `[ERROR] `.
+
 ### `POST /sessions/{sessionId}/messages`
 
 Dispatches a message. The assistant response is generated asynchronously.
@@ -160,6 +162,8 @@ Dispatches a message. The assistant response is generated asynchronously.
   "status": "running"
 }
 ```
+
+Poll `GET /sessions/{sessionId}/messages` for the assistant reply. If the run fails, the eventual assistant message will look like `{ "role": "assistant", "content": "[ERROR] ..." }`.
 
 Returns `409` if session is archived or already running (`SESSION_BUSY`).
 
