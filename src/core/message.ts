@@ -35,6 +35,14 @@ const toSessionMessage = (row: MessageRow): SessionMessage => ({
   createdAt: row.createdAt,
 });
 
+const collectErrorOutput = (stdout: string, stderr: string): string => {
+  const parts = [stderr.trim(), stdout.trim()].filter(
+    (value, index, values) => value.length > 0 && values.indexOf(value) === index,
+  );
+
+  return parts.join("\n");
+};
+
 const resolveSessionCwd = async (sessionId: string): Promise<string> => {
   const session = await getRequiredSessionById(sessionId);
 
@@ -172,7 +180,7 @@ const runSessionProcess = async (
     if (result.exitCode !== 0) {
       await insertAssistantMessage(
         sessionId,
-        `[ERROR] ${result.stderr.trim() || `${invocation.command} command failed`}`,
+        `[ERROR] ${collectErrorOutput(result.stdout, result.stderr) || `${invocation.command} command failed`}`,
       );
     } else {
       const response = result.stdout.trim() || result.stderr.trim();
