@@ -94,5 +94,6 @@ export type ArchiveResult = {
 export type SessionType = "local" | "worktree";
 export type SessionStatus = "idle" | "running" | "archived";
 export type MessageRole = "user" | "assistant";
+export type MessageStatus = "ok" | "error";
 
 export type SessionModel = "claude" | "codex";

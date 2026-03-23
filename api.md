@@ -136,13 +136,19 @@ Returns `409` if running, or if worktree has uncommitted changes and `force` is 
 ```json
 {
   "messages": [
-    { "id": "uuid", "role": "user | assistant", "content": "...", "createdAt": 1700000000000 }
+    {
+      "id": "uuid",
+      "role": "user | assistant",
+      "status": "ok | error",
+      "content": "...",
+      "createdAt": 1700000000000
+    }
   ],
   "total": 42
 }
 ```
 
-Assistant failures are returned as ordinary `assistant` messages. There is no separate error field; failed runs use `content` prefixed with `[ERROR] `.
+Assistant failures are returned as ordinary `assistant` messages with `status: "error"`. Failed runs still use `content` prefixed with `[ERROR] ` for display.
 
 ### `POST /sessions/{sessionId}/messages`
 
@@ -158,12 +164,18 @@ Dispatches a message. The assistant response is generated asynchronously.
 
 ```json
 {
-  "userMessage": { "id": "uuid", "role": "user", "content": "...", "createdAt": 1700000000000 },
+  "userMessage": {
+    "id": "uuid",
+    "role": "user",
+    "status": "ok",
+    "content": "...",
+    "createdAt": 1700000000000
+  },
   "status": "running"
 }
 ```
 
-Poll `GET /sessions/{sessionId}/messages` for the assistant reply. If the run fails, the eventual assistant message will look like `{ "role": "assistant", "content": "[ERROR] ..." }`.
+Poll `GET /sessions/{sessionId}/messages` for the assistant reply. If the run fails, the eventual assistant message will look like `{ "role": "assistant", "status": "error", "content": "[ERROR] ..." }`.
 
 Returns `409` if session is archived or already running (`SESSION_BUSY`).
 

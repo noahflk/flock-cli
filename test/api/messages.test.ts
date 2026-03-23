@@ -11,6 +11,7 @@ import {
 } from "../../src/api/routes/messages.ts";
 import { createSession } from "../../src/core/session.ts";
 import { repoPath } from "../../src/lib/config.ts";
+import type { MessageStatus } from "../../src/lib/types.ts";
 
 const cleanupTargets: string[] = [];
 const cleanupSessionIds: string[] = [];
@@ -44,6 +45,7 @@ const waitForMessages = async (
   messages: Array<{
     id: string;
     role: "user" | "assistant";
+    status: MessageStatus;
     content: string;
     createdAt: number;
   }>;
@@ -60,6 +62,7 @@ const waitForMessages = async (
       messages: Array<{
         id: string;
         role: "user" | "assistant";
+        status: MessageStatus;
         content: string;
         createdAt: number;
       }>;
@@ -132,6 +135,7 @@ describe("message routes", () => {
       status: "running",
       userMessage: {
         role: "user",
+        status: "ok",
         content: "fix the parser",
       },
     });
@@ -141,10 +145,12 @@ describe("message routes", () => {
     expect(payload.total).toBe(2);
     expect(payload.messages[0]).toMatchObject({
       role: "user",
+      status: "ok",
       content: "fix the parser",
     });
     expect(payload.messages[1]).toMatchObject({
       role: "assistant",
+      status: "error",
       content: "[ERROR] agent failed to apply patch",
     });
     expect(Object.keys(payload.messages[1] ?? {}).sort()).toEqual([
@@ -152,6 +158,7 @@ describe("message routes", () => {
       "createdAt",
       "id",
       "role",
+      "status",
     ]);
   });
 });
