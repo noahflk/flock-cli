@@ -12,6 +12,7 @@ import {
   handleCreateMessageRoute,
   handleListMessagesRoute,
 } from "./routes/messages.js";
+import { applyCommandPathOverrides } from "../lib/command-paths.js";
 import { loadServerConfig } from "../lib/server-config.js";
 import { FlockError, type ErrorCode } from "../lib/types.js";
 
@@ -143,6 +144,7 @@ const handleRequest = async (context: RouteContext): Promise<Response> => {
 
 const main = async (): Promise<void> => {
   const config = await loadServerConfig();
+  applyCommandPathOverrides(config);
   await initializeDatabase();
 
   const rateLimiter = new RateLimiter({

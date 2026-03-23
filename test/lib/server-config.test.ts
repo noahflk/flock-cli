@@ -15,7 +15,13 @@ const makeTempDir = async (label: string): Promise<string> => {
 
 const writeServerConfig = async (
   targetPath: string,
-  input: { secret: string; port: number },
+  input: {
+    secret: string;
+    port: number;
+    claudePath?: string;
+    codexPath?: string;
+    ghPath?: string;
+  },
 ): Promise<void> => {
   await mkdir(path.dirname(targetPath), { recursive: true });
   await writeFile(targetPath, JSON.stringify(input));
@@ -56,6 +62,9 @@ describe("loadServerConfig", () => {
     expect(config).toEqual({
       secret: "env",
       port: 4001,
+      claudePath: undefined,
+      codexPath: undefined,
+      ghPath: undefined,
     });
   });
 
@@ -78,6 +87,9 @@ describe("loadServerConfig", () => {
     expect(config).toEqual({
       secret: "repo",
       port: 4101,
+      claudePath: undefined,
+      codexPath: undefined,
+      ghPath: undefined,
     });
   });
 
@@ -98,7 +110,65 @@ describe("loadServerConfig", () => {
     expect(config).toEqual({
       secret: "home",
       port: 4201,
+      claudePath: undefined,
+      codexPath: undefined,
+      ghPath: undefined,
     });
+  });
+
+  it("parses optional executable paths when provided", async () => {
+    const rootDir = await makeTempDir("flock-server-config-paths");
+    const cwd = path.join(rootDir, "repo");
+    const homeConfigPath = path.join(rootDir, "home", ".flock", "server-config.json");
+
+    await mkdir(cwd, { recursive: true });
+    await writeServerConfig(homeConfigPath, {
+      secret: "home",
+      port: 4301,
+      claudePath: "/home/noah/.npm/bin/claude",
+      codexPath: "/home/noah/.npm/bin/codex",
+      ghPath: "/usr/bin/gh",
+    });
+
+    const config = await loadServerConfig({
+      cwd,
+      homeConfigPath,
+      env: {},
+    });
+
+    expect(config).toEqual({
+      secret: "home",
+      port: 4301,
+      claudePath: "/home/noah/.npm/bin/claude",
+      codexPath: "/home/noah/.npm/bin/codex",
+      ghPath: "/usr/bin/gh",
+    });
+  });
+
+  it("rejects blank executable paths", async () => {
+    const rootDir = await makeTempDir("flock-server-config-invalid-path");
+    const cwd = path.join(rootDir, "repo");
+    const homeConfigPath = path.join(rootDir, "home", ".flock", "server-config.json");
+
+    await mkdir(cwd, { recursive: true });
+    await writeServerConfig(homeConfigPath, {
+      secret: "home",
+      port: 4401,
+      claudePath: "   ",
+    });
+
+    try {
+      await loadServerConfig({
+        cwd,
+        homeConfigPath,
+        env: {},
+      });
+      throw new Error("Expected loadServerConfig to throw.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(FlockError);
+      expect((error as FlockError).code).toBe("INVALID_FLOCK_CONFIG");
+      expect((error as FlockError).message).toContain("claudePath");
+    }
   });
 
   it("throws INVALID_FLOCK_CONFIG when no config exists in any location", async () => {

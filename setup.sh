@@ -24,6 +24,10 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   exit 1
 fi
 
+GH_PATH="$(command -v gh)"
+CLAUDE_PATH="$(command -v claude)"
+CODEX_PATH="$(command -v codex)"
+
 # --- System dependencies ---
 if ! command -v unzip &>/dev/null; then
   echo "=== Installing system dependencies ==="
@@ -78,19 +82,61 @@ bun install
 
 # --- Server config ---
 mkdir -p "$FLOCK_CONFIG_DIR"
-if [ ! -f "$FLOCK_CONFIG_DIR/server-config.json" ]; then
-  echo "=== Creating server config ==="
-  SECRET=$(openssl rand -hex 32)
-  cat > "$FLOCK_CONFIG_DIR/server-config.json" <<EOF
-{
-  "secret": "$SECRET",
-  "port": $FLOCK_PORT
+CONFIG_PATH="$FLOCK_CONFIG_DIR/server-config.json"
+CONFIG_ALREADY_EXISTS=0
+
+if [ -f "$CONFIG_PATH" ]; then
+  CONFIG_ALREADY_EXISTS=1
+fi
+
+echo "=== Syncing server config ==="
+FLOCK_SERVER_CONFIG_TARGET="$CONFIG_PATH" \
+FLOCK_SERVER_DEFAULT_PORT="$FLOCK_PORT" \
+GH_PATH="$GH_PATH" \
+CLAUDE_PATH="$CLAUDE_PATH" \
+CODEX_PATH="$CODEX_PATH" \
+node <<'EOF'
+const fs = require("node:fs");
+const path = require("node:path");
+const crypto = require("node:crypto");
+
+const configPath = process.env.FLOCK_SERVER_CONFIG_TARGET;
+const defaultPort = Number(process.env.FLOCK_SERVER_DEFAULT_PORT);
+
+let existing = {};
+
+if (configPath && fs.existsSync(configPath)) {
+  existing = JSON.parse(fs.readFileSync(configPath, "utf8"));
 }
+
+const parsedPort = Number(existing.port);
+const port =
+  Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535
+    ? parsedPort
+    : defaultPort;
+
+const secret =
+  typeof existing.secret === "string" && existing.secret.trim().length > 0
+    ? existing.secret.trim()
+    : crypto.randomBytes(32).toString("hex");
+
+const next = {
+  ...existing,
+  secret,
+  port,
+  claudePath: process.env.CLAUDE_PATH,
+  codexPath: process.env.CODEX_PATH,
+  ghPath: process.env.GH_PATH,
+};
+
+fs.mkdirSync(path.dirname(configPath), { recursive: true });
+fs.writeFileSync(configPath, `${JSON.stringify(next, null, 2)}\n`);
 EOF
-  echo "Generated secret: $SECRET"
-  echo "Config written to $FLOCK_CONFIG_DIR/server-config.json"
+
+if [ "$CONFIG_ALREADY_EXISTS" -eq 0 ]; then
+  echo "Config written to $CONFIG_PATH"
 else
-  echo "=== Server config already exists, skipping ==="
+  echo "Config updated at $CONFIG_PATH"
 fi
 
 # --- Systemd service (Debian/Ubuntu only) ---
