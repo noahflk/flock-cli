@@ -131,6 +131,12 @@ const handleApiRoute = async (request: Request): Promise<Response> => {
 };
 
 const handleRequest = async (context: RouteContext): Promise<Response> => {
+  const url = new URL(context.request.url);
+
+  if (context.request.method === "GET" && url.pathname === "/health") {
+    return handleHealthRoute();
+  }
+
   runMiddleware(context);
   return await handleApiRoute(context.request);
 };
