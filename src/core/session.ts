@@ -58,6 +58,34 @@ export const getRequiredSessionById = async (id: string): Promise<SessionRow> =>
   return session;
 };
 
+export const getRequiredWorktreeSession = async (
+  repo: string,
+  workspaceName: string,
+): Promise<SessionRow> => {
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.repo, repo),
+        eq(sessions.type, "worktree"),
+        eq(sessions.workspaceName, workspaceName),
+        inArray(sessions.status, ["idle", "running"]),
+      ),
+    )
+    .orderBy(desc(sessions.updatedAt))
+    .limit(1);
+
+  if (!session) {
+    throw new FlockError({
+      code: "SESSION_NOT_FOUND",
+      message: `Worktree session not found for ${repo}/${workspaceName}`,
+    });
+  }
+
+  return session;
+};
+
 export const listSessions = async (
   filters: SessionListFilters = {},
 ): Promise<SessionSummary[]> => {

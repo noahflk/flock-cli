@@ -8,7 +8,6 @@ export type ErrorCode =
   | "WORKSPACE_ALREADY_EXISTS"
   | "WORKSPACE_NAME_CONFLICT"
   | "CLAUDE_COMMAND_FAILED"
-  | "PR_COMMAND_FAILED"
   | "GIT_COMMAND_FAILED"
   | "COMMAND_NOT_FOUND"
   | "IO_ERROR"
@@ -76,11 +75,6 @@ export type SendResult = {
 export type WorkspaceResult = {
   name: string;
   path: string;
-  branch: string;
-};
-
-export type PRResult = {
-  url: string;
   branch: string;
 };
 

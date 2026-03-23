@@ -257,6 +257,27 @@ export const getBranchAtPath = async (cwd: string): Promise<string> => {
   return result.stdout.trim();
 };
 
+export const countUncommittedChangesAtPath = async (cwd: string): Promise<number> => {
+  const result = await runProcess({
+    command: "git",
+    args: ["status", "--porcelain"],
+    cwd,
+  });
+
+  if (result.exitCode !== 0) {
+    throw new FlockError({
+      code: "GIT_COMMAND_FAILED",
+      message: result.stderr || `Failed to inspect git status in ${cwd}`,
+      cause: result,
+    });
+  }
+
+  return result.stdout
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0).length;
+};
+
 export const pushBranch = async (cwd: string, branch: string): Promise<void> => {
   const result = await runProcess({
     command: "git",

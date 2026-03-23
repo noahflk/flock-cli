@@ -12,6 +12,7 @@ import {
   handleCreateMessageRoute,
   handleListMessagesRoute,
 } from "./routes/messages.js";
+import { handleCreateWorkspacePRRoute } from "./routes/workspaces.js";
 import { applyCommandPathOverrides } from "../lib/command-paths.js";
 import { loadServerConfig } from "../lib/server-config.js";
 import { FlockError, type ErrorCode } from "../lib/types.js";
@@ -119,6 +120,16 @@ const handleApiRoute = async (request: Request): Promise<Response> => {
 
     if (resource === "cancel" && request.method === "POST") {
       return await handleCancelMessageRoute(sessionId);
+    }
+  }
+
+  if (path.length === 4 && path[0] === "workspaces") {
+    const repo = decodeURIComponent(path[1] ?? "");
+    const workspaceName = decodeURIComponent(path[2] ?? "");
+    const resource = path[3];
+
+    if (resource === "pr" && request.method === "POST") {
+      return await handleCreateWorkspacePRRoute(request, repo, workspaceName);
     }
   }
 
