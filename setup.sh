@@ -6,6 +6,24 @@ FLOCK_DIR="$HOME/flock-cli"
 FLOCK_CONFIG_DIR="$HOME/.flock"
 FLOCK_PORT=3000
 
+# --- Check prerequisites ---
+MISSING=()
+command -v git &>/dev/null   || MISSING+=("git       — https://git-scm.com/downloads")
+command -v gh &>/dev/null    || MISSING+=("gh        — https://cli.github.com")
+command -v claude &>/dev/null || MISSING+=("claude    — https://claude.ai/download")
+command -v codex &>/dev/null || MISSING+=("codex     — npm i -g @openai/codex")
+
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo "Error: the following required tools are not installed:"
+  echo ""
+  for tool in "${MISSING[@]}"; do
+    echo "  • $tool"
+  done
+  echo ""
+  echo "Install them and re-run this script."
+  exit 1
+fi
+
 # --- System dependencies ---
 if ! command -v unzip &>/dev/null; then
   echo "=== Installing system dependencies ==="
@@ -43,42 +61,6 @@ if ! command -v bun &>/dev/null; then
   export PATH="$BUN_INSTALL/bin:$PATH"
 else
   echo "=== Bun already installed, skipping ==="
-fi
-
-# --- Claude CLI ---
-if ! command -v claude &>/dev/null; then
-  echo "=== Installing Claude CLI ==="
-  curl -fsSL https://claude.ai/install.sh | bash
-  export PATH="$HOME/.local/bin:$PATH"
-else
-  echo "=== Claude CLI already installed, skipping ==="
-fi
-if ! grep -q 'export PATH="\$HOME/.local/bin:\$PATH"' "$HOME/.bashrc" 2>/dev/null; then
-  echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-fi
-
-# --- GitHub CLI ---
-if ! command -v gh &>/dev/null; then
-  echo "=== Installing GitHub CLI ==="
-  (type -p wget >/dev/null || (sudo apt update && sudo apt install wget -y)) \
-    && sudo mkdir -p -m 755 /etc/apt/keyrings \
-    && out=$(mktemp) && wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    && cat "$out" | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-    && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-    && sudo mkdir -p -m 755 /etc/apt/sources.list.d \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-    && sudo apt update \
-    && sudo apt install gh -y
-else
-  echo "=== GitHub CLI already installed, skipping ==="
-fi
-
-# --- Codex CLI ---
-if ! command -v codex &>/dev/null; then
-  echo "=== Installing Codex CLI ==="
-  npm i -g @openai/codex
-else
-  echo "=== Codex CLI already installed, skipping ==="
 fi
 
 # --- Clone/update repo ---
@@ -149,10 +131,10 @@ echo "============================================"
 echo ""
 echo "Next steps:"
 echo ""
-echo "  1. Log in to your providers:"
-echo "     $ claude    # authenticate with Anthropic"
-echo "     $ codex     # authenticate with OpenAI"
-echo "     $ gh auth login   # authenticate with GitHub"
+echo "  1. Authenticate (if not already done):"
+echo "     $ claude          # Anthropic"
+echo "     $ codex           # OpenAI"
+echo "     $ gh auth login   # GitHub"
 echo ""
 echo "  2. Start the server:"
 echo "     $ sudo systemctl start flock"
