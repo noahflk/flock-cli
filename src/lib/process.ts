@@ -112,3 +112,26 @@ export const runProcess = async (
 
   return await runWithNode(input);
 };
+
+export const runInteractiveProcess = async ({
+  command,
+  args = [],
+  cwd,
+  env,
+}: RunProcessInput): Promise<number> => {
+  return await new Promise<number>((resolve) => {
+    const child = spawn(command, args, {
+      cwd,
+      stdio: "inherit",
+      env: env ?? process.env,
+    });
+
+    child.on("error", () => {
+      resolve(127);
+    });
+
+    child.on("close", (code: number | null) => {
+      resolve(code ?? 1);
+    });
+  });
+};

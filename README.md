@@ -87,7 +87,7 @@ List all workspaces, optionally filtered by repo name.
 
 ### `flock update`
 
-Pull the latest version and reinstall dependencies.
+Pull the latest version, reinstall dependencies, and restart `flock.service` when new code is installed.
 
 ## API
 
