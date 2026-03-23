@@ -1,9 +1,10 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { SERVER_CONFIG_PATH } from "./config.js";
+import type { CommandPathOverrides } from "./command-paths.js";
 import { FlockError } from "./types.js";
 
-export type ServerConfig = {
+export type ServerConfig = CommandPathOverrides & {
   secret: string;
   port: number;
 };
@@ -19,6 +20,25 @@ const REPO_SERVER_CONFIG_RELATIVE_PATH = path.join(".flock", "server-config.json
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+const toOptionalString = (
+  value: unknown,
+  fieldName: string,
+  configPath: string,
+): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new FlockError({
+      code: "INVALID_FLOCK_CONFIG",
+      message: `Invalid server config at ${configPath}: ${fieldName} must be a non-empty string when provided`,
+    });
+  }
+
+  return value.trim();
+};
 
 const toServerConfig = (value: unknown, configPath: string): ServerConfig => {
   if (!isObject(value)) {
@@ -50,9 +70,16 @@ const toServerConfig = (value: unknown, configPath: string): ServerConfig => {
     });
   }
 
+  const claudePath = toOptionalString(value.claudePath, "claudePath", configPath);
+  const codexPath = toOptionalString(value.codexPath, "codexPath", configPath);
+  const ghPath = toOptionalString(value.ghPath, "ghPath", configPath);
+
   return {
     secret,
     port,
+    claudePath,
+    codexPath,
+    ghPath,
   };
 };
 

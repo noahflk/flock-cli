@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { resolveConfiguredCommand } from "./command-paths.js";
 import type { ProcessResult } from "./types.js";
 
 type RunProcessInput = {
@@ -19,6 +20,7 @@ const runWithBun = async ({
   cwd,
   env,
 }: RunProcessInput): Promise<ProcessResult> => {
+  const resolvedCommand = resolveConfiguredCommand(command, env);
   const maybeBun = (globalThis as unknown as {
     Bun: {
       spawn: (
@@ -37,7 +39,7 @@ const runWithBun = async ({
     };
   }).Bun;
 
-  const proc = maybeBun.spawn([command, ...args], {
+  const proc = maybeBun.spawn([resolvedCommand, ...args], {
     cwd,
     env,
     stdout: "pipe",
@@ -63,8 +65,9 @@ const runWithNode = async ({
   cwd,
   env,
 }: RunProcessInput): Promise<ProcessResult> => {
+  const resolvedCommand = resolveConfiguredCommand(command, env);
   return await new Promise<ProcessResult>((resolve) => {
-    const child = spawn(command, args, {
+    const child = spawn(resolvedCommand, args, {
       cwd,
       stdio: ["ignore", "pipe", "pipe"],
       env: env ?? process.env,
@@ -119,8 +122,9 @@ export const runInteractiveProcess = async ({
   cwd,
   env,
 }: RunProcessInput): Promise<number> => {
+  const resolvedCommand = resolveConfiguredCommand(command, env);
   return await new Promise<number>((resolve) => {
-    const child = spawn(command, args, {
+    const child = spawn(resolvedCommand, args, {
       cwd,
       stdio: "inherit",
       env: env ?? process.env,

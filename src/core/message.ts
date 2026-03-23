@@ -3,6 +3,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "../api/db/client.js";
 import { messages } from "../api/db/schema.js";
 import { assertRepoExists } from "../lib/git.js";
+import { resolveConfiguredCommand } from "../lib/command-paths.js";
 import { FlockError } from "../lib/types.js";
 import { buildSendInvocation } from "./send.js";
 import {
@@ -95,7 +96,8 @@ const spawnWithCapture = async (
   args: string[],
   cwd: string,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
-  const proc = spawn(command, args, {
+  const resolvedCommand = resolveConfiguredCommand(command, process.env);
+  const proc = spawn(resolvedCommand, args, {
     cwd,
     env: process.env,
     stdio: ["ignore", "pipe", "pipe"],

@@ -27,6 +27,20 @@ sudo systemctl start flock
 
 The API will be available at `http://<your-ip>:3000`. Your secret is in `~/.flock/server-config.json`.
 
+The generated `~/.flock/server-config.json` also stores absolute paths for `claude`, `codex`, and `gh`. That keeps the API server working under `systemd` even when the service `PATH` is minimal.
+
+Example:
+
+```json
+{
+  "secret": "...",
+  "port": 3000,
+  "claudePath": "/home/you/.npm/bin/claude",
+  "codexPath": "/home/you/.npm/bin/codex",
+  "ghPath": "/usr/bin/gh"
+}
+```
+
 ## CLI Commands
 
 ### `flock clone <repo>`
